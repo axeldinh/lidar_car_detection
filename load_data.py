@@ -3,11 +3,16 @@ import os
 from torch.utils.data import Dataset, DataLoader, random_split
 import pytorch_lightning as pl
 
-
 def load_data():
 
-    assert os.path.exists('data/train.npz'), 'Train data not found!'
-    assert os.path.exists('data/test.npz'), 'Test data not found!'
+    os.makedirs('data', exist_ok=True)
+
+    if not os.path.exists('data/train.npz') or not os.path.exists('data/test.npz'):
+        from aicrowd.dataset.download import download_dataset
+        print("Downloading dataset from AIcrowd API")
+        print("This might not work if no login token is provided")
+        print("Consider downloading the dataset manually.")
+        download_dataset('lidar-car-detection', 'data/', 1, [])
 
     train = np.load('data/train.npz', allow_pickle=True)['train']
     test = np.load('data/test.npz', allow_pickle=True)['test']
@@ -133,3 +138,9 @@ def collate_fn(batch):
         return padded_data, labels
     else:
         return padded_data
+
+
+if __name__ == '__main__':
+
+    from aicrowd.dataset.download import download_dataset
+    download_dataset('lidar-car-detection', 'data/', 1, [])
