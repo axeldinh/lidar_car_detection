@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 from torch.utils.data import Dataset, DataLoader, random_split
 import pytorch_lightning as pl
 
@@ -16,9 +17,6 @@ def load_data():
 
     train = np.load('data/train.npz', allow_pickle=True)['train']
     test = np.load('data/test.npz', allow_pickle=True)['test']
-
-    train = train[:100]
-    test = test[:100]
 
     train_data = train[:, 0]
     train_labels = train[:, 1]
@@ -87,10 +85,13 @@ class LidarModule(pl.LightningDataModule):
     def setup(self, stage=None):
 
         full_data, full_labels, test = load_data()
+        full_data = np.stack(full_data)
+        test = np.stack(test)
+
         if self.debug:
-            full_data = full_data[:10]
+            full_data = full_data[:10, :1000, :]
             full_labels = full_labels[:10]
-            test = test[:10]
+            test = test[:10, :1000, :]
         full_data = remove_nans(full_data)
 
         full_dataset = LidarDataset(full_data, full_labels, self.data_transforms, self.label_transforms)
@@ -110,11 +111,11 @@ class LidarModule(pl.LightningDataModule):
                             shuffle=False, num_workers=self.params['num_workers'],
                             collate_fn=collate_fn, persistent_workers=self.params['num_workers']>0)
     
-    def test_dataloader(self):
+    def predict_dataloader(self):
         return DataLoader(self.test_dataset, batch_size=self.params['batch_size'],
                             shuffle=False, num_workers=self.params['num_workers'],
                             collate_fn=collate_fn, persistent_workers=self.params['num_workers']>0)
-
+    
 
 def collate_fn(batch):
     import torch

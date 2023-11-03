@@ -30,20 +30,20 @@ class PointNet(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x):
+        return self.get_pred_and_matrix(x)[0]
+
+    def get_pred_and_matrix(self, x):
         x, trans, trans_feat = self.feat(x)
         x = F.relu(self.bn1(self.fc1(x)))
         x = F.relu(self.bn2(self.dropout(self.fc2(x))))
         x = self.fc3(x)
         return x, trans_feat
     
-    def predict(self, x):
-        return self(x)[0]
-    
     def get_loss(self, x, y):
-        preds, transform = self(x)
+        preds, transform = self.get_pred_and_matrix(x)
         loss = (preds - y).pow(2).mean()
         loss += self.params['transform_scale'] * feature_transform_regulizer(transform)
-        return loss
+        return loss, preds.detach().cpu()
 
 
 class STN3d(nn.Module):
