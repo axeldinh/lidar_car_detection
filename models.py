@@ -43,7 +43,7 @@ class PointNet(nn.Module):
         preds, transform = self.get_pred_and_matrix(x)
         loss = (preds - y).pow(2).mean()
         loss += self.params['transform_scale'] * feature_transform_regulizer(transform)
-        return loss, preds.detach().cpu()
+        return loss, preds.detach()
 
 
 class STN3d(nn.Module):
