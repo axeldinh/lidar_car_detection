@@ -20,19 +20,18 @@ class LightningModule(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         data, label = batch
         loss, preds = self.model.get_loss(data, label)
-        total_error = torch.abs(preds - label).mean()
-        max_error = torch.abs(preds - label).max()
+        diffs = torch.abs(preds - label)
         self.log('train_loss', loss)
         outputs = {
-            'total_error': total_error,
-            'max_error': max_error
+            'diffs': diffs
         }
         self.training_steps_outputs.append(outputs)
         return loss
     
     def on_train_epoch_end(self):
-        total_error = torch.stack([x['total_error'] for x in self.training_steps_outputs]).mean()
-        max_error = torch.stack([x['max_error'] for x in self.training_steps_outputs]).max()
+        diffs = torch.stack([x['diffs'] for x in self.training_steps_outputs]).view(-1)
+        total_error = diffs.mean() * 601  # Number of train samples
+        max_error = diffs.max()
         self.log('train_total_error', total_error)
         self.log('train_max_error', max_error)
         self.training_steps_outputs = []
@@ -40,18 +39,17 @@ class LightningModule(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         data, label = batch
         loss, preds = self.model.get_loss(data, label)
-        total_error = torch.abs(preds - label).mean()
-        max_error = torch.abs(preds - label).max()
+        diffs = torch.abs(preds - label)
         self.log('val_loss', loss)
         outputs = {
-            'total_error': total_error,
-            'max_error': max_error
+            'diffs': diffs,
         }
         self.validation_steps_outputs.append(outputs)
 
     def on_validation_epoch_end(self):
-        total_error = torch.stack([x['total_error'] for x in self.validation_steps_outputs]).mean()
-        max_error = torch.stack([x['max_error'] for x in self.validation_steps_outputs]).max()
+        diffs = torch.stack([x['diffs'] for x in self.validation_steps_outputs]).view(-1)
+        total_error = diffs.mean() * 601  # Number of test samples
+        max_error = diffs.max()
         self.log('val_total_error', total_error)
         self.log('val_max_error', max_error)
         self.validation_steps_outputs = []
