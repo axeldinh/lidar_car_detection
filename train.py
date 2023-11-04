@@ -77,7 +77,7 @@ def train(params, debug=False):
     early_stop_callback = EarlyStopping(
         monitor='val_total_error',
         patience=10,
-        verbose=False,
+        verbose=True,
         mode='min'
     )
 
@@ -110,6 +110,8 @@ def train(params, debug=False):
     shutil.make_archive('submission', 'zip', 'submission')
 
     shutil.rmtree('submission')
+
+    print("Submission file generated at submission.zip")
 
 
 
