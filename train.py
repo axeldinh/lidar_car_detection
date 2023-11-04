@@ -59,14 +59,56 @@ class LightningModule(pl.LightningModule):
 
 def train(params, debug=False):
 
+    from pytorch_lightning.callbacks import ModelCheckpoint
+    from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
+    from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+    from pytorch_lightning.callbacks import LearningRateMonitor
+
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_total_error',
+        dirpath='checkpoints',
+        filename='best',
+        save_top_k=1,
+        mode='min',
+    )
+
+    early_stop_callback = EarlyStopping(
+        monitor='val_total_error',
+        patience=10,
+        verbose=False,
+        mode='min'
+    )
+
+    lr_monitor = LearningRateMonitor(logging_interval='step')
+
+    wandb_logger = WandbLogger(name=params['model']['model'], project='lidar-car-detection', log_model=True, offline=False)
+    tensorboard_logger = TensorBoardLogger('logs')
+    
+    wandb_logger.log_hyperparams(params)
+    tensorboard_logger.log_hyperparams(params)
+
+    logger = [wandb_logger, tensorboard_logger]
+    callbacks = [checkpoint_callback, early_stop_callback, lr_monitor]
+
     datamodule = LidarModule(params["data"], debug=debug)
     model = LightningModule(params["model"])
 
-    trainer = pl.Trainer(**params["trainer"])
+    trainer = pl.Trainer(logger=logger, callbacks=callbacks, **params["trainer"])
     trainer.fit(model, datamodule)
-    predictions = trainer.predict(model, datamodule)
-    predictions = torch.cat(predictions)
-    print(predictions)
+    predictions = trainer.predict(model, datamodule, ckpt_path='best')
+    predictions = torch.cat(predictions, dim=0).view(-1).cpu().numpy()
+
+    import pandas as pd
+    import os, shutil
+
+    os.makedirs('submission', exist_ok=True)
+    open('submission/original_notebook.ipynb', 'w').close()
+    df = pd.DataFrame(predictions, columns=['label'])
+    df.to_csv('submission/submission.csv', index=False)
+    shutil.make_archive('submission', 'zip', 'submission')
+
+    os.removedirs('submission')
+
 
 
 if __name__ == '__main__':
