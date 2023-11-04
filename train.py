@@ -35,6 +35,7 @@ class LightningModule(pl.LightningModule):
         max_error = torch.stack([x['max_error'] for x in self.training_steps_outputs]).max()
         self.log('train_total_error', total_error)
         self.log('train_max_error', max_error)
+        self.training_steps_outputs = []
 
     def validation_step(self, batch, batch_idx):
         data, label = batch
@@ -53,6 +54,7 @@ class LightningModule(pl.LightningModule):
         max_error = torch.stack([x['max_error'] for x in self.validation_steps_outputs]).max()
         self.log('val_total_error', total_error)
         self.log('val_max_error', max_error)
+        self.validation_steps_outputs = []
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=self.params['learning_rate'])
@@ -122,6 +124,5 @@ if __name__ == '__main__':
         params['trainer']['max_epochs'] = 1
         params['trainer']['log_every_n_steps'] = 1
         params['data']['batch_size'] = 2
-
 
     train(params, debug)
