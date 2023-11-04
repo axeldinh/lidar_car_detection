@@ -87,7 +87,13 @@ class LidarModule(pl.LightningDataModule):
         full_data, full_labels, test = load_data()
         full_data = np.stack(full_data)
         test = np.stack(test)
-
+        coords_max = np.max(np.max(full_data, axis=0, keepdims=True), axis=1, keepdims=True)
+        coords_min = np.min(np.min(full_data, axis=0, keepdims=True), axis=1, keepdims=True)
+        
+        # Scale the Lidar points to be between 0 and 1
+        full_data = (full_data - coords_min) / (coords_max - coords_min)
+        test = (test - coords_min) / (coords_max - coords_min)
+        
         if self.debug:
             full_data = full_data[:10, :1000, :]
             full_labels = full_labels[:10]
