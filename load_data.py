@@ -139,9 +139,3 @@ def collate_fn(batch):
         return padded_data, labels
     else:
         return padded_data
-
-
-if __name__ == '__main__':
-
-    from aicrowd.dataset.download import download_dataset
-    download_dataset('lidar-car-detection', 'data/', 1, [])
