@@ -84,19 +84,18 @@ class LidarDataset(Dataset):
 
 class LidarModule(pl.LightningDataModule):
 
-    def __init__(self, params, data_transforms=None, label_transforms=None, normalize=True, debug=False):
+    def __init__(self, params, data_transforms=None, label_transforms=None, debug=False):
         super().__init__()
         self.params = params
         self.data_transforms = data_transforms
         self.label_transforms = label_transforms
-        self.normalize = normalize
         self.debug = debug
 
     def setup(self, stage=None):
 
         full_data, full_labels, test = load_data()
 
-        if self.normalize:
+        if self.params['normalize']:
 
             coords_max = np.max(np.concatenate(full_data), axis=0, keepdims=True)
             coords_min = np.min(np.concatenate(full_data), axis=0, keepdims=True)
