@@ -1,6 +1,6 @@
+import torch
 import numpy as np
 import os
-from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 from torch.utils.data import Dataset, DataLoader, random_split
 import pytorch_lightning as pl
 
@@ -10,18 +10,27 @@ def load_data():
 
     if not os.path.exists('data/train.npz') or not os.path.exists('data/test.npz'):
         from aicrowd.dataset.download import download_dataset
+        from aicrowd.auth.login import aicrowd_login
         print("Downloading dataset from AIcrowd API")
         print("This might not work if no login token is provided")
         print("Consider downloading the dataset manually.")
         download_dataset('lidar-car-detection', 'data/', 1, [])
 
-    train = np.load('data/train.npz', allow_pickle=True)['train']
-    test = np.load('data/test.npz', allow_pickle=True)['test']
+    try:
+        train_data = np.load('data/processed_train_data.npz', allow_pickle=True)
+        train_labels = np.load('data/processed_train_labels.npy', allow_pickle=True)
+        test_data = np.load('data/processed_test_data.npz', allow_pickle=True)
+        train_data = [train_data[key] for key in train_data]
+        test_data = [test_data[key] for key in test_data]
+        print("Loaded preprocessed data")
+    except:
+        from preprocess_data import preprocess_data
+        print("Preprocessing data...")
+        train_data = np.load('data/train.npz', allow_pickle=True)['train']
+        test_data = np.load('data/test.npz', allow_pickle=True)['test']
+        train_data, train_labels, test_data = preprocess_data(train_data[:, 0], train_data[:, 1], test_data)
 
-    train_data = train[:, 0]
-    train_labels = train[:, 1]
-
-    return train_data, train_labels, test
+    return train_data, train_labels, test_data
 
 
 def remove_nans(data):
@@ -75,30 +84,31 @@ class LidarDataset(Dataset):
 
 class LidarModule(pl.LightningDataModule):
 
-    def __init__(self, params, data_transforms=None, label_transforms=None, debug=False):
+    def __init__(self, params, data_transforms=None, label_transforms=None, normalize=True, debug=False):
         super().__init__()
         self.params = params
         self.data_transforms = data_transforms
         self.label_transforms = label_transforms
+        self.normalize = normalize
         self.debug = debug
 
     def setup(self, stage=None):
 
         full_data, full_labels, test = load_data()
-        full_data = np.stack(full_data)
-        test = np.stack(test)
-        coords_max = np.max(np.max(full_data, axis=0, keepdims=True), axis=1, keepdims=True)
-        coords_min = np.min(np.min(full_data, axis=0, keepdims=True), axis=1, keepdims=True)
-        
-        # Scale the Lidar points to be between 0 and 1
-        full_data = (full_data - coords_min) / (coords_max - coords_min)
-        test = (test - coords_min) / (coords_max - coords_min)
-        
+
+        if self.normalize:
+
+            coords_max = np.max(np.concatenate(full_data), axis=0, keepdims=True)
+            coords_min = np.min(np.concatenate(full_data), axis=0, keepdims=True)
+
+            # Scale the Lidar points to be between 0 and 1
+            full_data = [(sample - coords_min) / (coords_max - coords_min) for sample in full_data]
+            test = [(sample - coords_min) / (coords_max - coords_min) for sample in test]
+
         if self.debug:
-            full_data = full_data[:10, :1000, :]
-            full_labels = full_labels[:10]
-            test = test[:10, :1000, :]
-        full_data = remove_nans(full_data)
+            full_data = full_data[:100]
+            full_labels = full_labels[:100]
+            test = test[:50]
 
         full_dataset = LidarDataset(full_data, full_labels, self.data_transforms, self.label_transforms)
         train_size = int((1 - self.params['ratio_validation']) * len(full_dataset))
@@ -124,7 +134,6 @@ class LidarModule(pl.LightningDataModule):
     
 
 def collate_fn(batch):
-    import torch
 
     if len(batch[0]) == 2:
         data, labels = zip(*batch)
