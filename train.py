@@ -109,7 +109,7 @@ def train(params, debug=False):
     df.to_csv('submission/submission.csv', index=False)
     shutil.make_archive('submission', 'zip', 'submission')
 
-    os.removedirs('submission')
+    shutil.rmtree('submission')
 
 
 
