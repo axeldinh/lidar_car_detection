@@ -42,7 +42,10 @@ class PointNet(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        return self.get_pred_and_matrix(x)[0]
+        if self.params['regression']:
+            return self.get_pred_and_matrix(x)[0]
+        else:
+            return torch.argmax(self.get_pred_and_matrix(x)[0], dim=1)
 
     def get_pred_and_matrix(self, x):
         x, trans, trans_feat = self.feat(x)
