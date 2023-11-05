@@ -4,7 +4,7 @@ import os
 from torch.utils.data import Dataset, DataLoader, random_split
 import pytorch_lightning as pl
 
-def load_data():
+def load_data(processed=True):
 
     os.makedirs('data', exist_ok=True)
 
@@ -17,12 +17,19 @@ def load_data():
         download_dataset('lidar-car-detection', 'data/', 1, [])
 
     try:
-        train_data = np.load('data/processed_train_data.npz', allow_pickle=True)
-        train_labels = np.load('data/processed_train_labels.npy', allow_pickle=True)
-        test_data = np.load('data/processed_test_data.npz', allow_pickle=True)
-        train_data = [train_data[key] for key in train_data]
-        test_data = [test_data[key] for key in test_data]
-        print("Loaded preprocessed data")
+        if processed:
+            train_data = np.load('data/processed_train_data.npz', allow_pickle=True)
+            train_labels = np.load('data/processed_train_labels.npy', allow_pickle=True)
+            test_data = np.load('data/processed_test_data.npz', allow_pickle=True)
+            train_data = [train_data[key] for key in train_data]
+            test_data = [test_data[key] for key in test_data]
+            print("Loaded preprocessed data")
+        else:
+            train_data = np.load('data/train.npz', allow_pickle=True)['train']
+            test_data = np.load('data/test.npz', allow_pickle=True)['test']
+            train_labels = train_data[:, 1]
+            train_data = train_data[:, 0]
+            print("Loaded raw data")
     except:
         from preprocess_data import preprocess_data
         print("Preprocessing data...")
