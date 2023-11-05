@@ -30,7 +30,7 @@ class PointNet(nn.Module):
         if self.params['regression']:
             self.params['output_size'] = 1
         else:
-            self.params['output_size'] = 7
+            self.params['output_size'] = 8
 
         self.feat = PointNetEncoder(global_feat=True, feature_transform=True, channel=self.params['input_size'])
         self.fc1 = nn.Linear(1024, 512)
