@@ -6,6 +6,7 @@ from torch.autograd import Variable
 import numpy as np
 import torch.nn.functional as F
 
+
 def get_model(params):
     if params['model'] == 'pointnet':
         return PointNet(params)
@@ -19,11 +20,22 @@ class PointNet(nn.Module):
         super(PointNet, self).__init__()
 
         self.params = params
+        self.params['input_size'] = 3
+
+        params_keys = ['transform_scale', 'regression']
+        for key in params_keys:
+            if key not in params:
+                raise Exception(f"Missing key {key} in params")
         
-        self.feat = PointNetEncoder(global_feat=True, feature_transform=True, channel=params['input_size'])
+        if self.params['regression']:
+            self.params['output_size'] = 1
+        else:
+            self.params['output_size'] = 7
+
+        self.feat = PointNetEncoder(global_feat=True, feature_transform=True, channel=self.params['input_size'])
         self.fc1 = nn.Linear(1024, 512)
         self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, params['output_size'])
+        self.fc3 = nn.Linear(256, self.params['output_size'])
         self.dropout = nn.Dropout(p=0.4)
         self.bn1 = nn.BatchNorm1d(512)
         self.bn2 = nn.BatchNorm1d(256)
@@ -41,7 +53,10 @@ class PointNet(nn.Module):
     
     def get_loss(self, x, y):
         preds, transform = self.get_pred_and_matrix(x)
-        loss = (preds - y).pow(2).mean()
+        if self.params['regression']:
+            loss = F.mse_loss(preds, y)
+        else:
+            loss = F.cross_entropy(preds, y)
         loss += self.params['transform_scale'] * feature_transform_regulizer(transform)
         return loss, preds.detach()
 
