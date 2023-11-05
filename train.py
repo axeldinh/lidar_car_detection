@@ -128,8 +128,6 @@ def train(params, debug=False):
     
     make_submission(predictions)
 
-    print("Submission file generated at submission.zip")
-
 
 if __name__ == '__main__':
     import yaml
