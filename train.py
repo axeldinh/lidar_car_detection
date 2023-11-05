@@ -21,6 +21,8 @@ class LightningModule(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         data, label = batch
         loss, preds = self.model.get_loss(data, label)
+        if not self.params['regression']:
+            preds = torch.argmax(preds, dim=1).float()
         diffs = torch.abs(preds - label)
         self.log('train_loss', loss)
         outputs = {
@@ -40,6 +42,8 @@ class LightningModule(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         data, label = batch
         loss, preds = self.model.get_loss(data, label)
+        if not self.params['regression']:
+            preds = torch.argmax(preds, dim=1).float()
         diffs = torch.abs(preds - label)
         self.log('val_loss', loss)
         outputs = {
@@ -60,9 +64,9 @@ class LightningModule(pl.LightningModule):
         vals = [0.0]
 
         while vals[-1] < 12:
-            total = torch.logical_and(vals[-1] < diffs, diffs < vals[-1] + 0.1).sum().item()
+            total = torch.logical_and(vals[-1] <= diffs, diffs < vals[-1] + 1.).sum().item()
             totals.append(total)
-            vals.append(vals[-1]+0.5)
+            vals.append(vals[-1]+1.)
 
         vals = [(vals[i] + vals[i+1])/2 for i in range(len(vals)-1)]
         totals = [x / len(diffs) for x in totals]
