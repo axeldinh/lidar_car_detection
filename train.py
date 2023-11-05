@@ -1,8 +1,9 @@
-from typing import Any
+import matplotlib.pyplot as plt
 import torch
 from load_data import LidarModule
 from models import get_model
 import pytorch_lightning as pl
+from utils import make_submission
 
 class LightningModule(pl.LightningModule):
 
@@ -47,12 +48,34 @@ class LightningModule(pl.LightningModule):
         self.validation_steps_outputs.append(outputs)
 
     def on_validation_epoch_end(self):
+        import wandb
         diffs = torch.stack([x['diffs'] for x in self.validation_steps_outputs]).view(-1)
-        total_error = diffs.mean() * 601  # Number of test samples
+        total_error = diffs.mean()  # Number of test samples
         max_error = diffs.max()
         self.log('val_total_error', total_error)
         self.log('val_max_error', max_error)
         self.validation_steps_outputs = []
+
+        totals = []
+        vals = [0.0]
+
+        while vals[-1] < 12:
+            total = torch.logical_and(vals[-1] < diffs, diffs < vals[-1] + 0.1).sum().item()
+            totals.append(total)
+            vals.append(vals[-1]+0.5)
+
+        vals = [(vals[i] + vals[i+1])/2 for i in range(len(vals)-1)]
+        totals = [x / len(diffs) for x in totals]
+
+        fig, ax = plt.subplots()
+        ax.plot(vals, totals)
+        ax.set_xlabel('Error')
+        ax.set_ylabel('Percentage')
+        ax.set_title('Error distribution')
+
+        wandb.log({'error_distribution': fig})
+
+
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=self.params['learning_rate'])
@@ -95,22 +118,13 @@ def train(params, debug=False):
 
     trainer = pl.Trainer(logger=logger, callbacks=callbacks, **params["trainer"])
     trainer.fit(model, datamodule)
+
     predictions = trainer.predict(model, datamodule, ckpt_path='best')
     predictions = torch.cat(predictions, dim=0).view(-1).cpu().numpy()
-
-    import pandas as pd
-    import os, shutil
-
-    os.makedirs('submission', exist_ok=True)
-    open('submission/original_notebook.ipynb', 'w').close()
-    df = pd.DataFrame(predictions, columns=['label'])
-    df.to_csv('submission/submission.csv', index=False)
-    shutil.make_archive('submission', 'zip', 'submission')
-
-    shutil.rmtree('submission')
+    
+    make_submission(predictions)
 
     print("Submission file generated at submission.zip")
-
 
 
 if __name__ == '__main__':
