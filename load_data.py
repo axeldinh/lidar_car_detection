@@ -157,6 +157,6 @@ def collate_fn(batch):
     padded_data = torch.tensor(padded_data).float().transpose(1, 2)
 
     if len(batch[0]) == 2:
-        return padded_data, labels
+        return padded_data, labels.float()
     else:
         return padded_data

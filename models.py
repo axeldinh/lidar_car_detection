@@ -57,7 +57,7 @@ class PointNet(nn.Module):
     def get_loss(self, x, y):
         preds, transform = self.get_pred_and_matrix(x)
         if self.params['regression']:
-            loss = F.mse_loss(preds, y)
+            loss = F.mse_loss(preds.view(-1), y.view(-1))
         else:
             loss = F.cross_entropy(preds, y)
         loss += self.params['transform_scale'] * feature_transform_regulizer(transform)

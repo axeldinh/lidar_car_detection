@@ -23,7 +23,7 @@ class LightningModule(pl.LightningModule):
         loss, preds = self.model.get_loss(data, label)
         if not self.params['regression']:
             preds = torch.argmax(preds, dim=1).float()
-        diffs = torch.abs(preds - label)
+        diffs = torch.abs(preds.view(-1) - label)
         self.log('train_loss', loss)
         outputs = {
             'diffs': diffs
@@ -44,7 +44,7 @@ class LightningModule(pl.LightningModule):
         loss, preds = self.model.get_loss(data, label)
         if not self.params['regression']:
             preds = torch.argmax(preds, dim=1).float()
-        diffs = torch.abs(preds - label)
+        diffs = torch.abs(preds.view(-1) - label)
         self.log('val_loss', loss)
         outputs = {
             'diffs': diffs,
