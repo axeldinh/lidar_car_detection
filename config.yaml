@@ -2,19 +2,19 @@
 {
   "model": {
     "model": "pointnet",
-    "input_size": 3,
-    "output_size": 1,
     "transform_scale": 0.001,
     "learning_rate": 0.0001,
+    "regression": True,
   },
   "data": {
     "batch_size": 16,
     "num_workers": 0,
     "ratio_validation": 0.2,
+    "normalize": True,
   },
   "trainer": {
     "max_epochs": 200,
     "log_every_n_steps": 1,
   },
-  "debug": False,
+  "debug": True,
 }
