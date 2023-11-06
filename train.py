@@ -122,7 +122,7 @@ def train(params, debug=False):
     if params["wandb"]:
         loggers.append(
             WandbLogger(
-                name=params["model"]["model_name"],
+                name=params["lit_params"]["model_name"],
                 project="lidar-car-detection",
                 log_model=True,
                 offline=False,
