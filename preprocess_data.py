@@ -1,10 +1,10 @@
-
 import numpy as np
 from load_data import remove_nans
 import os
 
-def preprocess_data(train_data, train_labels, test_data, dir='data'):
-    """ Preprocess the data and saves it in the data folder.
+
+def preprocess_data(train_data, train_labels, test_data, dir="data"):
+    """Preprocess the data and saves it in the data folder.
 
     Steps:
         - Remove the points where the coordinates are (-1, -1, -1)
@@ -29,8 +29,8 @@ def preprocess_data(train_data, train_labels, test_data, dir='data'):
     test_data = [sample[sample[:, 2] > -1.6] for sample in test_data]
 
     # Save the data, train_data is a list
-    np.savez_compressed(os.path.join(dir, 'processed_train_data.npz'), *train_data)
-    np.save(os.path.join(dir, 'processed_train_labels.npy'), train_labels)
-    np.savez_compressed(os.path.join(dir, 'processed_test_data.npz'), *test_data)
+    np.savez_compressed(os.path.join(dir, "processed_train_data.npz"), *train_data)
+    np.save(os.path.join(dir, "processed_train_labels.npy"), train_labels)
+    np.savez_compressed(os.path.join(dir, "processed_test_data.npz"), *test_data)
 
     return train_data, train_labels, test_data

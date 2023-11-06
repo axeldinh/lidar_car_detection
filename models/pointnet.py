@@ -46,7 +46,9 @@ class PointNetClassifier(PointNet):
 
     def get_loss(self, x, labels):
         preds, transform = self.get_pred_and_matrix(x)
-        loss = F.cross_entropy(preds.view(x.shape[0], -1), labels.long().view(x.shape[0]))
+        loss = F.cross_entropy(
+            preds.view(x.shape[0], -1), labels.long().view(x.shape[0])
+        )
         loss += self.transform_scale * feature_transform_regulizer(transform)
         return loss, preds.detach()
 
@@ -179,6 +181,7 @@ class PointNetEncoder(nn.Module):
         B, D, N = x.size()
         trans = self.stn(x)
         x = x.transpose(2, 1)
+        feature = torch.Tensor([])
         if D > 3:
             feature = x[:, :, 3:]
             x = x[:, :, :3]
