@@ -4,13 +4,19 @@ from load_data import LidarModule
 from models import get_model
 import pytorch_lightning as pl
 from utils import make_submission
+import wandb
 
 
 class LightningModule(pl.LightningModule):
-    def __init__(self, params):
+    def __init__(self, model_name, regression, lr=1e-4, model_kwargs={}):
         super().__init__()
-        self.params = params
-        self.model = get_model(params)
+
+        self.model_name = model_name
+        self.regression = regression
+        self.lr = lr
+        self.model = get_model(
+            model_name=model_name, regression=regression, model_kwargs=model_kwargs
+        )
 
         self.training_steps_outputs = []
         self.validation_steps_outputs = []
@@ -46,8 +52,6 @@ class LightningModule(pl.LightningModule):
         self.validation_steps_outputs.append(outputs)
 
     def on_validation_epoch_end(self):
-        import wandb
-
         diffs = torch.stack([x["diffs"] for x in self.validation_steps_outputs]).view(
             -1
         )
@@ -84,9 +88,7 @@ class LightningModule(pl.LightningModule):
             pass
 
     def configure_optimizers(self):
-        return torch.optim.Adam(
-            self.model.parameters(), lr=self.params["learning_rate"]
-        )
+        return torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
 
 def train(params, debug=False):
@@ -130,7 +132,7 @@ def train(params, debug=False):
         logger.log_hyperparams(params)
 
     datamodule = LidarModule(debug=debug, **params["data_module_kwargs"])
-    model = LightningModule(params["model"])
+    model = LightningModule(**params["lit_params"], model_kwargs=params["model_kwargs"])
 
     trainer = pl.Trainer(logger=loggers, callbacks=callbacks, **params["trainer"])
     trainer.fit(model, datamodule)

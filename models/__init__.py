@@ -27,10 +27,6 @@ def string_to_model(string, regression=False):
     return available_models[string]
 
 
-def get_model(params):
-    model = string_to_model(
-        string=params["model_name"], regression=params["regression"]
-    )
-    params.pop("model_name")
-    params.pop("regression")
-    return model(**params["model_kwargs"])
+def get_model(model_name="pointnet", regression=False, model_kwargs={}):
+    model = string_to_model(string=model_name, regression=regression)
+    return model(**model_kwargs)
