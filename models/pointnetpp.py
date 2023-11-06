@@ -69,9 +69,7 @@ class PointNetPPClassifier(PointNetPP):
         preds, transforms = self.get_preds_and_transform_matrices(x)
         transform_loss = self.get_transform_loss(transforms)
         loss = (
-            F.cross_entropy(
-                preds.view(x.shape[0], -1), labels.long().view(x.shape[0])
-            )
+            F.cross_entropy(preds.view(x.shape[0], -1), labels.long().view(x.shape[0]))
             + transform_loss * self.transform_scale
         )
         return loss, preds.detach()
@@ -214,12 +212,14 @@ class PointNetPPEncoder(nn.Module):
 
         # Sampling and grouping
         for batch_idx in range(batch_size):
-            centroid, centroid_idx = farthest_point_sampling(
+            centroid, centroid_idx = farthest_point_sampling_torch(
                 x[batch_idx, :, : self.spatial_dim], num_centroids
             )
             centroids[batch_idx] = centroid.squeeze()
             centroids_idx[batch_idx] = centroid_idx
-            groups[batch_idx] = grouping(x[batch_idx, :, : self.spatial_dim], centroid)
+            groups[batch_idx] = grouping_torch(
+                x[batch_idx, :, : self.spatial_dim], centroid
+            )
 
         max_group_length = np.unique(groups.cpu().numpy(), return_counts=True)[1].max()
 
