@@ -14,6 +14,7 @@ from tqdm import tqdm
 
 def val_loop(model, val_loader, epoch_idx, progress_bar=False):
     model.eval()
+    loss = 0
     total_error = 0
     max_error = 0
     device = next(model.parameters()).device
@@ -25,12 +26,13 @@ def val_loop(model, val_loader, epoch_idx, progress_bar=False):
     for batch in val_pb:
         data, label = batch
         data, label = data.to(device), label.to(device)
-        loss, preds = model.get_loss(data, label)
+        batch_loss, preds = model.get_loss(data, label)
+        loss += batch_loss.item()
         diffs = torch.abs(preds.view(-1) - label.cpu().view(-1))
         total_error += diffs.sum().item()
         max_error = max(max_error, diffs.max().item())
 
-    res_string = f"Validation - Epoch {epoch_idx} - Total Error: {total_error} - Max Error: {max_error}"
+    res_string = f"Validation - Epoch {epoch_idx} - Loss: {loss} - Total Error: {total_error} - Max Error: {max_error}"
     if progress_bar:
         val_pb.set_description(res_string)
     else:
@@ -96,6 +98,12 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--epochs", type=int, default=2)
     parser.add_argument("-p", "--progress_bar", action="store_true")
     args = parser.parse_args()
+
+    print("Running Profiling with:")
+    print(f"\tDebug: {args.debug}")
+    print(f"\tBatch Size: {args.batch_size}")
+    print(f"\tEpochs: {args.epochs}")
+    print(f"\tProgress Bar: {args.progress_bar}")
 
     with cProfile.Profile() as pr:
         main(
