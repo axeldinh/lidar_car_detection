@@ -92,38 +92,44 @@ def train(params, debug=False):
     from pytorch_lightning.callbacks.early_stopping import EarlyStopping
     from pytorch_lightning.callbacks import LearningRateMonitor
 
-    checkpoint_callback = ModelCheckpoint(
-        monitor="val_total_error",
-        dirpath="checkpoints",
-        filename="best",
-        save_top_k=1,
-        mode="min",
+    callbacks = []
+    callbacks.append(
+        ModelCheckpoint(
+            monitor="val_total_error",
+            dirpath="checkpoints",
+            filename="best",
+            save_top_k=1,
+            mode="min",
+        )
     )
 
-    early_stop_callback = EarlyStopping(
-        monitor="val_total_error", patience=10, verbose=True, mode="min"
-    )
+    callbacks.append(LearningRateMonitor(logging_interval="step"))
 
-    lr_monitor = LearningRateMonitor(logging_interval="step")
+    if params["early_stop"]:
+        callbacks.append(
+            EarlyStopping(
+                monitor="val_total_error", patience=10, verbose=True, mode="min"
+            )
+        )
 
-    wandb_logger = WandbLogger(
-        name=params["model"]["model_name"],
-        project="lidar-car-detection",
-        log_model=True,
-        offline=False,
-    )
-    tensorboard_logger = TensorBoardLogger("logs")
-
-    wandb_logger.log_hyperparams(params)
-    tensorboard_logger.log_hyperparams(params)
-
-    logger = [wandb_logger, tensorboard_logger]
-    callbacks = [checkpoint_callback, early_stop_callback, lr_monitor]
+    loggers = []
+    loggers.append(TensorBoardLogger("logs"))
+    if params["wandb"]:
+        loggers.append(
+            WandbLogger(
+                name=params["model"]["model_name"],
+                project="lidar-car-detection",
+                log_model=True,
+                offline=False,
+            )
+        )
+    for logger in loggers:
+        logger.log_hyperparams(params)
 
     datamodule = LidarModule(params["data"], debug=debug)
     model = LightningModule(params["model"])
 
-    trainer = pl.Trainer(logger=logger, callbacks=callbacks, **params["trainer"])
+    trainer = pl.Trainer(logger=loggers, callbacks=callbacks, **params["trainer"])
     trainer.fit(model, datamodule)
 
     predictions = trainer.predict(model, datamodule, ckpt_path="best")
@@ -134,14 +140,29 @@ def train(params, debug=False):
 
 if __name__ == "__main__":
     import yaml
+    import argparse
 
-    with open("config.yaml") as f:
+    args = argparse.ArgumentParser()
+    args.add_argument("-c", "--config", type=str, default="config.yaml")
+    args.add_argument("-d", "--debug", action="store_true", default=False)
+    args.add_argument("-w", "--wandb", action="store_true", default=False)
+    args.add_argument("-e", "--early_stop", action="store_true", default=False)
+    args = args.parse_args()
+
+    with open(args.config) as f:
         params = yaml.load(f, Loader=yaml.FullLoader)
+        if params["debug"] is None:
+            params["debug"] = args.debug
+        else:  # Command line argument overrides config.yaml
+            params["debug"] = args.debug or params["debug"]  # This overrides it
 
     debug = params["debug"]
     if debug:
         params["trainer"]["max_epochs"] = 1
         params["trainer"]["log_every_n_steps"] = 1
         params["data"]["batch_size"] = 2
+
+    params["wandb"] = args.wandb
+    params["early_stop"] = args.early_stop
 
     train(params, debug)
