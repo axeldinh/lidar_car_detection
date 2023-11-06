@@ -7,19 +7,21 @@ from models import (
     PointNetPPClassifier,
 )
 import torch
-from tqdm import tqdm
 import cProfile
-from pstats import Stats, SortKey
+from pstats import Stats
+from tqdm import tqdm
 
 
-def val_loop(model, val_loader, epoch_idx):
+def val_loop(model, val_loader, epoch_idx, verbose=False):
     model.eval()
     total_error = 0
     max_error = 0
     device = next(model.parameters()).device
 
-    val_pb = tqdm(val_loader)
-
+    if verbose:
+        val_pb = tqdm(val_loader)
+    else:
+        val_pb = val_loader
     for batch in val_pb:
         data, label = batch
         data, label = data.to(device), label.to(device)
@@ -28,31 +30,39 @@ def val_loop(model, val_loader, epoch_idx):
         total_error += diffs.sum().item()
         max_error = max(max_error, diffs.max().item())
 
-    print(f"Epoch {epoch_idx} - Total Error: {total_error} - Max Error: {max_error}")
+    if verbose:
+        val_pb.set_description(
+            f"Validation - Epoch {epoch_idx} - Total Error: {total_error} - Max Error: {max_error}"
+        )
     model.train()
 
 
-def train_model(model, train_loader, val_loader, epochs=5):
+def train_model(model, train_loader, val_loader, epochs=2, verbose=False):
     device = next(model.parameters()).device
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    for epoch in tqdm(range(epochs)):
-        for batch in tqdm(train_loader):
+    for epoch in range(epochs):
+        if verbose:
+            epoch_pb = tqdm(train_loader)
+            epoch_pb.set_description(f"Training - Epoch {epoch}")
+        else:
+            epoch_pb = train_loader
+        for batch in epoch_pb:
             data, label = batch
             data, label = data.to(device), label.to(device)
             loss, _ = model.get_loss(data, label)
             loss.backward()
             optimizer.step()
+            optimizer.zero_grad()
+        val_loop(model, val_loader, epoch, verbose=verbose)
 
-        val_loop(model, val_loader, epoch)
 
-
-def main():
+def main(debug=False, epochs=2, batch_size=2, verbose=False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("Using ", "GPU 🎉" if device == "cuda" else "CPU 😢")
 
-    datamodule = LidarModule(batch_size=2, debug=True)
+    datamodule = LidarModule(batch_size=batch_size, debug=debug)
     datamodule.setup()
 
     train_loader = datamodule.train_dataloader()
@@ -69,12 +79,26 @@ def main():
         print("==========================================")
         print(f"Training {model.__name__}...")
         model = model()
-        train_model(model, train_loader, val_loader)
+        train_model(model, train_loader, val_loader, epochs=epochs, verbose=verbose)
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--debug", action="store_true")
+    parser.add_argument("-b", "--batch_size", type=int, default=2)
+    parser.add_argument("-e", "--epochs", type=int, default=2)
+    parser.add_argument("-v", "--verbose", action="store_true")
+    args = parser.parse_args()
+
     with cProfile.Profile() as pr:
-        main()
+        main(
+            debug=args.debug,
+            epochs=args.epochs,
+            batch_size=args.batch_size,
+            verbose=args.verbose,
+        )
 
         with open("profile.txt", "w") as f:
             stats = Stats(pr, stream=f)
