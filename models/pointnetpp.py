@@ -10,8 +10,8 @@ class PointNetPP(nn.Module):
         self,
         input_size=3,
         output_size=1,
-        num_pt_features=[8, 16, 32],
-        num_fc_features=[32, 16, 8],
+        num_pt_features=[3, 6, 12],
+        num_fc_features=[256, 128, 64],
         spatial_dim=3,
         transform_scale=0.001,
     ):
