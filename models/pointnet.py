@@ -43,13 +43,18 @@ class PointNetClassifier(PointNet):
         kwargs_pointnet["output_size"] = num_classes
         super(PointNetClassifier, self).__init__(**kwargs_pointnet)
 
+    def forward(self, x):
+        preds = super().forward(x)
+        return torch.argmax(preds, dim=1)
+
     def get_loss(self, x, labels):
         preds, transform = self.get_pred_and_matrix(x)
         loss = F.cross_entropy(
             preds.view(x.shape[0], -1), labels.long().view(x.shape[0])
         )
         loss += self.transform_scale * feature_transform_regulizer(transform)
-        return loss, preds.detach()
+        preds = torch.argmax(preds, dim=1).detach()
+        return loss, preds
 
 
 class PointNetRegressor(PointNet):
