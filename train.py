@@ -78,7 +78,10 @@ class LightningModule(pl.LightningModule):
         ax.set_ylabel("Percentage")
         ax.set_title("Error distribution")
 
-        wandb.log({"error_distribution": fig})
+        try:
+            wandb.log({"error_distribution": fig})
+        except Exception:
+            pass
 
     def configure_optimizers(self):
         return torch.optim.Adam(
@@ -126,7 +129,7 @@ def train(params, debug=False):
     for logger in loggers:
         logger.log_hyperparams(params)
 
-    datamodule = LidarModule(params["data"], debug=debug)
+    datamodule = LidarModule(debug=debug, **params["data_module_kwargs"])
     model = LightningModule(params["model"])
 
     trainer = pl.Trainer(logger=loggers, callbacks=callbacks, **params["trainer"])
@@ -160,7 +163,7 @@ if __name__ == "__main__":
     if debug:
         params["trainer"]["max_epochs"] = 1
         params["trainer"]["log_every_n_steps"] = 1
-        params["data"]["batch_size"] = 2
+        params["data_module_kwargs"]["batch_size"] = 2
 
     params["wandb"] = args.wandb
     params["early_stop"] = args.early_stop

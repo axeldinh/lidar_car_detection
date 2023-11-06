@@ -90,10 +90,20 @@ class LidarDataset(Dataset):
 
 class LidarModule(pl.LightningDataModule):
     def __init__(
-        self, params, data_transforms=None, label_transforms=None, debug=False
+        self,
+        batch_size=32,
+        ratio_validation=0.2,
+        num_workers=0,
+        normalize=True,
+        data_transforms=None,
+        label_transforms=None,
+        debug=False,
     ):
         super().__init__()
-        self.params = params
+        self.normalize = normalize
+        self.batch_size = batch_size
+        self.ratio_validation = ratio_validation
+        self.num_workers = num_workers
         self.data_transforms = data_transforms
         self.label_transforms = label_transforms
         self.debug = debug
@@ -101,7 +111,7 @@ class LidarModule(pl.LightningDataModule):
     def setup(self, stage=None):
         full_data, full_labels, test = load_data()
 
-        if self.params["normalize"]:
+        if self.normalize:
             coords_max = np.max(np.concatenate(full_data), axis=0, keepdims=True)
             coords_min = np.min(np.concatenate(full_data), axis=0, keepdims=True)
 
@@ -124,7 +134,7 @@ class LidarModule(pl.LightningDataModule):
         full_dataset = LidarDataset(
             full_data, full_labels, self.data_transforms, self.label_transforms
         )
-        train_size = int((1 - self.params["ratio_validation"]) * len(full_dataset))
+        train_size = int((1 - self.ratio_validation) * len(full_dataset))
         validation_size = len(full_dataset) - train_size
 
         self.train_dataset, self.validation_dataset = random_split(
@@ -135,31 +145,31 @@ class LidarModule(pl.LightningDataModule):
     def train_dataloader(self):
         return DataLoader(
             self.train_dataset,
-            batch_size=self.params["batch_size"],
+            batch_size=self.batch_size,
             shuffle=True,
-            num_workers=self.params["num_workers"],
+            num_workers=self.num_workers,
             collate_fn=collate_fn,
-            persistent_workers=self.params["num_workers"] > 0,
+            persistent_workers=self.num_workers > 0,
         )
 
     def val_dataloader(self):
         return DataLoader(
             self.validation_dataset,
-            batch_size=self.params["batch_size"],
+            batch_size=self.batch_size,
             shuffle=False,
-            num_workers=self.params["num_workers"],
+            num_workers=self.num_workers,
             collate_fn=collate_fn,
-            persistent_workers=self.params["num_workers"] > 0,
+            persistent_workers=self.num_workers > 0,
         )
 
     def predict_dataloader(self):
         return DataLoader(
             self.test_dataset,
-            batch_size=self.params["batch_size"],
+            batch_size=self.batch_size,
             shuffle=False,
-            num_workers=self.params["num_workers"],
+            num_workers=self.num_workers,
             collate_fn=collate_fn,
-            persistent_workers=self.params["num_workers"] > 0,
+            persistent_workers=self.num_workers > 0,
         )
 
 
