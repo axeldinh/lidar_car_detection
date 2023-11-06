@@ -128,9 +128,13 @@ def train(params, debug=False):
     model = LightningModule(params["model"])
 
     trainer = pl.Trainer(logger=logger, callbacks=callbacks, **params["trainer"])
-    # trainer.fit(model, datamodule)
+    trainer.fit(model, datamodule)
 
     predictions = trainer.predict(model, datamodule, ckpt_path="best")
+    if predictions is None:
+        print("All predictions are None.")
+        return
+    predictions = [torch.tensor(x) for x in predictions]
     predictions = torch.cat(predictions, dim=0).view(-1).cpu().numpy()
 
     make_submission(predictions)

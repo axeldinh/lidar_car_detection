@@ -28,6 +28,8 @@ def string_to_model(string, regression=False):
 
 
 def get_model(params):
-    model = string_to_model(string=params["model"], regression=params["regression"])
+    model = string_to_model(
+        string=params["model_name"], regression=params["regression"]
+    )
     params.pop("model")
     return model(**params)
