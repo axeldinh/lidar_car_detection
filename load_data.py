@@ -118,6 +118,8 @@ class LidarModule(pl.LightningDataModule):
             full_data = full_data[:100]
             full_labels = full_labels[:100]
             test = test[:50]
+            full_data = [sample[:256] for sample in full_data]
+            test = [sample[:256] for sample in test]
 
         full_dataset = LidarDataset(
             full_data, full_labels, self.data_transforms, self.label_transforms
@@ -176,7 +178,7 @@ def collate_fn(batch):
     ]
     padded_data = np.stack(padded_data)
 
-    padded_data = torch.tensor(padded_data).float().transpose(1, 2)
+    padded_data = torch.tensor(padded_data).float()
 
     if len(batch[0]) == 2:
         labels = [sample[1] for sample in batch]
