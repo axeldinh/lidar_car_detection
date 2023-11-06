@@ -21,8 +21,6 @@ class LightningModule(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         data, label = batch
         loss, preds = self.model.get_loss(data, label)
-        if not self.params["regression"]:
-            preds = torch.argmax(preds, dim=1).float()
         diffs = torch.abs(preds.view(-1) - label)
         self.log("train_loss", loss)
         outputs = {"diffs": diffs}
@@ -40,8 +38,6 @@ class LightningModule(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         data, label = batch
         loss, preds = self.model.get_loss(data, label)
-        if not self.params["regression"]:
-            preds = torch.argmax(preds, dim=1).float()
         diffs = torch.abs(preds.view(-1) - label)
         self.log("val_loss", loss)
         outputs = {
@@ -111,7 +107,7 @@ def train(params, debug=False):
     lr_monitor = LearningRateMonitor(logging_interval="step")
 
     wandb_logger = WandbLogger(
-        name=params["model"]["model"],
+        name=params["model"]["model_name"],
         project="lidar-car-detection",
         log_model=True,
         offline=False,
@@ -131,11 +127,7 @@ def train(params, debug=False):
     trainer.fit(model, datamodule)
 
     predictions = trainer.predict(model, datamodule, ckpt_path="best")
-    if predictions is None:
-        print("All predictions are None.")
-        return
-    predictions = [torch.tensor(x) for x in predictions]
-    predictions = torch.cat(predictions, dim=0).view(-1).cpu().numpy()
+    predictions = torch.cat(predictions, dim=0).view(-1).cpu().numpy()  # type: ignore
 
     make_submission(predictions)
 
