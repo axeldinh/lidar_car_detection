@@ -31,5 +31,6 @@ def get_model(params):
     model = string_to_model(
         string=params["model_name"], regression=params["regression"]
     )
-    params.pop("model")
-    return model(**params)
+    params.pop("model_name")
+    params.pop("regression")
+    return model(**params["model_kwargs"])
